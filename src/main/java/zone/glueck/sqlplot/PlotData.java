@@ -14,6 +14,10 @@ public class PlotData implements XYZDataset {
 
     protected List<double[]> data;
 
+    private double min = Double.MAX_VALUE;
+
+    private double max = -Double.MAX_VALUE;
+
     @Override
     public Number getZ(int i, int i1) {
         return getZValue(i, i1);
@@ -87,5 +91,26 @@ public class PlotData implements XYZDataset {
     @Override
     public void setGroup(DatasetGroup datasetGroup) {
 
+    }
+
+    public double[] getZRange() {
+
+        if (this.data == null) {
+            return null;
+        }
+
+        if (this.max == -Double.MAX_VALUE && this.min == Double.MAX_VALUE) {
+
+            for (double[] vals : this.data) {
+                if (vals.length == 2) {
+                    return null;
+                }
+                this.min = Math.min(this.min, vals[2]);
+                this.max = Math.max(this.max, vals[2]);
+            }
+
+        }
+
+        return new double[]{this.min, this.max};
     }
 }

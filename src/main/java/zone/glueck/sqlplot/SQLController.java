@@ -131,6 +131,9 @@ public class SQLController {
                 }
                 PlotData plotData = new PlotData();
                 plotData.data = vals;
+                // This method caches the results and for a particularly long dataset I would rather eat up cycles on
+                // the SQL thread rather than the Swing EDT
+                plotData.getZRange();
 
                 PropertyChangeEvent pce = new PropertyChangeEvent(callingObject, QUERY_COMPLETE, null, plotData);
                 this.pcs.firePropertyChange(pce);

@@ -192,9 +192,9 @@ public class ChartPanel implements PropertyChangeListener {
             if (evt.getSource() == this && evt.getPropertyName().equals(SQLController.QUERY_COMPLETE)) {
                 Object eventObject = evt.getNewValue();
                 if (eventObject != null) {
-                    XYZDataset dataset = (XYZDataset) eventObject;
+                    PlotData dataset = (PlotData) eventObject;
                     SwingUtilities.invokeLater(() -> {
-                        XYPlot plot = new XYPlot(dataset, new NumberAxis("x"), new NumberAxis("y"), new StandardXYItemRenderer());
+                        XYPlot plot = new XYPlot(dataset, new NumberAxis("x"), new NumberAxis("y"), new PlotRenderer(dataset));
                         this.chartPanel.setChart(new JFreeChart("data", new Font("Serif", 0, 14), plot, false));
                         this.chartPanel.updateUI();
                         //this.chartPanel.setChart(ChartFactory.createScatterPlot("Data", "X Values", "Y Values", dataset));
