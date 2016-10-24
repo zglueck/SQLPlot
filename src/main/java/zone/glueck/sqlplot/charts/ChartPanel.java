@@ -71,6 +71,10 @@ public class ChartPanel extends AbstractSqlGateway {
 
     }
 
+    public JPanel getPanel() {
+        return this.panel;
+    }
+
     @Override
     protected void queryResultReturn(SQLData data) {
 
