@@ -8,12 +8,13 @@ import zone.glueck.sqlplot.sql.SQLController;
 import zone.glueck.sqlplot.sql.SQLData;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.SQLException;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by zach on 10/20/16.
@@ -34,6 +35,7 @@ public class ChartPanel extends AbstractSqlGateway {
     private final JList commandsList = new JList();
     private final JTextArea commandTextArea = new JTextArea();
     private final JButton executeButton = new JButton("Execute Command");
+    private final DefaultListModel<Query> commandsListModel = new DefaultListModel<>();
 
     // For testing purposes only
     public static void main(String[] args) {
@@ -65,6 +67,8 @@ public class ChartPanel extends AbstractSqlGateway {
         this.initLayout();
         this.initActions();
 
+        this.sqlController.requestTableAndFieldsMap();
+
     }
 
     @Override
@@ -95,7 +99,7 @@ public class ChartPanel extends AbstractSqlGateway {
 
     @Override
     protected void dataTableChange(Map<String, Set<String>> tablesAndFields) {
-
+        this.updateModels(tablesAndFields);
     }
 
     private void initLayout() {
@@ -147,6 +151,7 @@ public class ChartPanel extends AbstractSqlGateway {
         c.weightx= 0.5;
         c.weighty = 0.2;
         listPanel.add(new JScrollPane(this.tablesList), c);
+        this.tablesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         c = new GridBagConstraints();
         c.anchor = GridBagConstraints.WEST;
         c.gridx = 0;
@@ -177,6 +182,7 @@ public class ChartPanel extends AbstractSqlGateway {
         c.weightx= 0.5;
         c.weighty = 0.2;
         listPanel.add(new JScrollPane(this.commandsList), c);
+        this.commandsList.setModel(this.commandsListModel);
 
         // Full panel setup
         JSplitPane topSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.chartPanel, listPanel);
@@ -190,10 +196,77 @@ public class ChartPanel extends AbstractSqlGateway {
         this.executeButton.addActionListener((ActionEvent e) -> {
             String query = this.commandTextArea.getText();
             if (query != null && !query.isEmpty()) {
+                this.commandsListModel.addElement(new Query(query));
                 this.sqlController.executeQuery(this, query);
             }
         });
 
+        this.tablesList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                int itemIndex = e.getFirstIndex();
+
+                if (itemIndex < 0) {
+                    return;
+                }
+
+                DefaultListModel<Table> model = (DefaultListModel) tablesList.getModel();
+                Table table = model.elementAt(itemIndex);
+                if (table != null) {
+                    DefaultListModel<String> fieldsModel = new DefaultListModel<>();
+                    for (String field : table.fields) {
+                        fieldsModel.addElement(field);
+                    }
+                    fieldsList.setModel(fieldsModel);
+                }
+            }
+        });
+
+    }
+
+    private void updateModels(Map<String, Set<String>> tablesAndFields) {
+
+        DefaultListModel<Table> tables = new DefaultListModel<>();
+
+        Set<String> tableKeys = tablesAndFields.keySet();
+
+        for (String table : tableKeys) {
+            Set<String> fields = tablesAndFields.get(table);
+            tables.addElement(new Table(fields, table));
+        }
+
+        this.tablesList.setModel(tables);
+    }
+
+    private static class Table {
+
+        private final Set<String> fields;
+
+        private final String tableName;
+
+        public Table(Set<String> fields, String tableName) {
+            this.fields = fields;
+            this.tableName = tableName;
+        }
+
+        @Override
+        public String toString() {
+            return tableName;
+        }
+    }
+
+    private static class Query {
+
+        private final String query;
+
+        public Query(String query) {
+            this.query = query;
+        }
+
+        @Override
+        public String toString() {
+            return query.substring(0, Math.min(50, query.length()));
+        }
     }
 
 }

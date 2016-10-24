@@ -178,6 +178,14 @@ public class SQLController {
 
     }
 
+    public void requestTableAndFieldsMap() {
+
+        this.sqlService.submit(() -> {
+            this.fireDatasetChange();
+        });
+
+    }
+
     private void addTable(DataSource data, String table) {
 
         assert data != null;
