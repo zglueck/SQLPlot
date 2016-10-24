@@ -250,7 +250,7 @@ public class SQLController {
             int cols = data.getColumnCount();
             for(int i = 0; i < rows; i++) {
                 for (int j = 0 ; j < cols; j++) {
-                    preparedStatement.setString(cols + 1, data.getValueAt(i, j));
+                    preparedStatement.setString(j + 1, data.getValueAt(i, j));
                 }
                 preparedStatement.addBatch();
             }

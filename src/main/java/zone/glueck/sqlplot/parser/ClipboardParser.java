@@ -91,7 +91,7 @@ public class ClipboardParser implements DataSource {
 
     @Override
     public String getValueAt(int row, int column) {
-        if (row > 0 && column > 0 && row < this.data.size() && column < this.data.get(0).length) {
+        if (row >= 0 && column >= 0 && row < this.data.size() && column < this.data.get(0).length) {
             return this.data.get(row)[column];
         }
         return null;
