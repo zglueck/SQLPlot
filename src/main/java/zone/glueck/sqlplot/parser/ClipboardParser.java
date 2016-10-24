@@ -56,6 +56,8 @@ public class ClipboardParser implements DataSource {
                     for (String header : headers) {
                         this.headers.add(header.trim());
                     }
+                } else {
+                    this.data.add(COLUMN_DELIM.split(line));
                 }
                 continue;
             }
