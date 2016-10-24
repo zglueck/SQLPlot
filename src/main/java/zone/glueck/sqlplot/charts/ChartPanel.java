@@ -12,6 +12,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by zach on 10/20/16.
@@ -92,7 +94,7 @@ public class ChartPanel extends AbstractSqlGateway {
     }
 
     @Override
-    protected void dataTableChange() {
+    protected void dataTableChange(Map<String, Set<String>> tablesAndFields) {
 
     }
 
@@ -194,28 +196,4 @@ public class ChartPanel extends AbstractSqlGateway {
 
     }
 
-//    public void propertyChange(PropertyChangeEvent evt) {
-//
-//        if (evt != null) {
-//            // The event source should be this object if the event is a result return
-//            if (evt.getSource() == this && evt.getPropertyName().equals(SQLController.QUERY_COMPLETE)) {
-//                Object eventObject = evt.getNewValue();
-//                if (eventObject != null) {
-//                    PlotData dataset = (PlotData) eventObject;
-//                    SwingUtilities.invokeLater(() -> {
-//                        XYPlot plot = new XYPlot(dataset, new NumberAxis("x"), new NumberAxis("y"), new PlotRenderer(dataset));
-//                        this.chartPanel.setChart(new JFreeChart("data", new Font("Serif", 0, 14), plot, false));
-//                        this.chartPanel.updateUI();
-//                        //this.chartPanel.setChart(ChartFactory.createScatterPlot("Data", "X Values", "Y Values", dataset));
-//                    });
-//                }
-//            } else if (evt.getPropertyName().equals(SQLController.TABLE_ADDED)) {
-//                // TODO - add table updating
-//            } else if (evt.getPropertyName().equals(SQLController.DATA_ADDED)) {
-//                // TODO - add data updating
-//            }
-//
-//        }
-//
-//    }
 }

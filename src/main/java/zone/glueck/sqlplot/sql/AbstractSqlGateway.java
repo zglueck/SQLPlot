@@ -1,7 +1,5 @@
 package zone.glueck.sqlplot.sql;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.Map;
 import java.util.Set;
 

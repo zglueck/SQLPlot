@@ -18,7 +18,7 @@ public interface SQLData  {
     public double getValueAt(int row, int column);
 
     public enum Status {
-        SUCCESS, ERROR;
+        SUCCESS, ERROR
     }
 
 }
