@@ -1,4 +1,4 @@
-package zone.glueck.sqlplot;
+package zone.glueck.sqlplot.charts;
 
 import javax.imageio.ImageIO;
 import java.awt.*;

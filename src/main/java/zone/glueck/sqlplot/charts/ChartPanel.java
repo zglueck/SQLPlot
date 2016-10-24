@@ -1,35 +1,27 @@
-package zone.glueck.sqlplot;
+package zone.glueck.sqlplot.charts;
 
-import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.AbstractXYItemRenderer;
-import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
-import org.jfree.data.xy.XYZDataset;
+import zone.glueck.sqlplot.sql.AbstractSqlGateway;
+import zone.glueck.sqlplot.sql.SQLController;
+import zone.glueck.sqlplot.sql.SQLData;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.sql.SQLException;
-import java.util.LinkedHashSet;
+import java.util.List;
 
 /**
  * Created by zach on 10/20/16.
  */
-public class ChartPanel implements PropertyChangeListener {
+public class ChartPanel extends AbstractSqlGateway {
 
     /**
      * This panel which shows a plot and lists for the fields, tables, and commands.
      */
     private final JPanel panel;
-
-    /**
-     * The SQL controller to use for queries and data.
-     */
-    private final SQLController sqlController;
 
     /*
     JComponents
@@ -43,47 +35,64 @@ public class ChartPanel implements PropertyChangeListener {
 
     // For testing purposes only
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                ChartPanel chartPanel = new ChartPanel();
-                JFrame frame = new JFrame("Chart Panel Test");
-                frame.add(chartPanel.panel, BorderLayout.CENTER);
-                frame.pack();
-                frame.setVisible(true);
-                frame.setLocationRelativeTo(null);
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            }
+
+        try {
+            SQLController.initialized();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+
+        SwingUtilities.invokeLater(() -> {
+            ChartPanel chartPanel = new ChartPanel(SQLController.getController());
+            JFrame frame = new JFrame("Chart Panel Test");
+            frame.add(chartPanel.panel, BorderLayout.CENTER);
+            frame.pack();
+            frame.setVisible(true);
+            frame.setLocationRelativeTo(null);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         });
     }
 
-    public ChartPanel() {
+    public ChartPanel(SQLController sqlController) {
+        super(sqlController);
 
         this.panel = new JPanel(new BorderLayout());
 
         this.initLayout();
         this.initActions();
 
-        try {
-            this.sqlController = SQLController.getController();
-            this.sqlController.addChangeListener(this);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new IllegalStateException("the sql controller did not initialize properly");
+    }
+
+    @Override
+    protected void queryResultReturn(SQLData data) {
+
+        if (data != null) {
+
+            if (data.getStatus() == SQLData.Status.ERROR) {
+                // TODO - inform user of error condition
+            }
+
+            if (data.getStatus() == SQLData.Status.SUCCESS && data.getColumnCount() > 1) {
+                DataTranslator dataset = new DataTranslator(data);
+                List<String> columnNames = data.getColumnNames();
+                final XYPlot plot = new XYPlot(
+                        dataset,
+                        new NumberAxis(columnNames.get(0)),
+                        new NumberAxis(columnNames.get(1)),
+                        new PlotRenderer(dataset));
+                SwingUtilities.invokeLater(() -> {
+                    this.chartPanel.setChart(new JFreeChart("data", new Font("Sans Serif", 0, 14), plot, false));
+                });
+            }
+
         }
 
-        SQLData sqlData = new SQLData();
-        LinkedHashSet<String> headers = new LinkedHashSet<>();
-        headers.add("x");
-        headers.add("y");
-        headers.add("z");
-        sqlData.setHeaders(headers);
+    }
 
-        for (int i = 0; i<10; i++) {
-            SQLRow sqlRow = new SQLRow(new String[]{(i + 100.0) + "", (i + 10.0) + "", (i + 1.0) + ""});
-            sqlData.addRow(sqlRow);
-        }
-
-        this.sqlController.addData(sqlData, "myTable");
+    @Override
+    protected void dataTableChange() {
 
     }
 
@@ -185,28 +194,28 @@ public class ChartPanel implements PropertyChangeListener {
 
     }
 
-    public void propertyChange(PropertyChangeEvent evt) {
-
-        if (evt != null) {
-            // The event source should be this object if the event is a result return
-            if (evt.getSource() == this && evt.getPropertyName().equals(SQLController.QUERY_COMPLETE)) {
-                Object eventObject = evt.getNewValue();
-                if (eventObject != null) {
-                    PlotData dataset = (PlotData) eventObject;
-                    SwingUtilities.invokeLater(() -> {
-                        XYPlot plot = new XYPlot(dataset, new NumberAxis("x"), new NumberAxis("y"), new PlotRenderer(dataset));
-                        this.chartPanel.setChart(new JFreeChart("data", new Font("Serif", 0, 14), plot, false));
-                        this.chartPanel.updateUI();
-                        //this.chartPanel.setChart(ChartFactory.createScatterPlot("Data", "X Values", "Y Values", dataset));
-                    });
-                }
-            } else if (evt.getPropertyName().equals(SQLController.TABLE_ADDED)) {
-                // TODO - add table updating
-            } else if (evt.getPropertyName().equals(SQLController.DATA_ADDED)) {
-                // TODO - add data updating
-            }
-
-        }
-
-    }
+//    public void propertyChange(PropertyChangeEvent evt) {
+//
+//        if (evt != null) {
+//            // The event source should be this object if the event is a result return
+//            if (evt.getSource() == this && evt.getPropertyName().equals(SQLController.QUERY_COMPLETE)) {
+//                Object eventObject = evt.getNewValue();
+//                if (eventObject != null) {
+//                    PlotData dataset = (PlotData) eventObject;
+//                    SwingUtilities.invokeLater(() -> {
+//                        XYPlot plot = new XYPlot(dataset, new NumberAxis("x"), new NumberAxis("y"), new PlotRenderer(dataset));
+//                        this.chartPanel.setChart(new JFreeChart("data", new Font("Serif", 0, 14), plot, false));
+//                        this.chartPanel.updateUI();
+//                        //this.chartPanel.setChart(ChartFactory.createScatterPlot("Data", "X Values", "Y Values", dataset));
+//                    });
+//                }
+//            } else if (evt.getPropertyName().equals(SQLController.TABLE_ADDED)) {
+//                // TODO - add table updating
+//            } else if (evt.getPropertyName().equals(SQLController.DATA_ADDED)) {
+//                // TODO - add data updating
+//            }
+//
+//        }
+//
+//    }
 }

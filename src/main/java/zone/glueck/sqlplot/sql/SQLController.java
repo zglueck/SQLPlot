@@ -1,15 +1,9 @@
-package zone.glueck.sqlplot;
-
-import org.jfree.data.DomainOrder;
-import org.jfree.data.general.DatasetChangeListener;
-import org.jfree.data.general.DatasetGroup;
-import org.jfree.data.xy.XYDataset;
+package zone.glueck.sqlplot.sql;
 
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -30,22 +24,11 @@ public class SQLController {
      */
     private static final AtomicInteger TABLE_COUNT = new AtomicInteger(0);
 
-    /*
-    Property Change Event tags
-     */
-    public static final String TABLE_ADDED = "zone.glueck.SQLController.tableadded";
-    public static final String DATA_ADDED = "zone.glueck.SQLController.datadded";
-    public static final String QUERY_COMPLETE = "zone.glueck.SQLController.querycomplete";
-
     /**
      * Designated SQL interaction thread. All SQL operations should go through this thread which hosts the {@link
      * SQLController}.
      */
-    private final ExecutorService sqlService = Executors.newSingleThreadExecutor(new ThreadFactory() {
-        public Thread newThread(Runnable r) {
-            return new Thread(r, "zone.glueck.sql");
-        }
-    });
+    private final ExecutorService sqlService = Executors.newSingleThreadExecutor(r -> new Thread(r, "zone.glueck.sql"));
 
     /**
      * The singleton instance for SQL interactions.
@@ -68,9 +51,9 @@ public class SQLController {
     private final Map<String, Set<String>> fields = new HashMap<>();
 
     /**
-     * Property change support
+     * SQL Data Change Listeners
      */
-    private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
+    private final Set<AbstractSqlGateway> gateways = new CopyOnWriteArraySet<>();
 
     private SQLController() throws SQLException {
 
@@ -79,26 +62,35 @@ public class SQLController {
 
     }
 
-    public static synchronized SQLController getController() throws SQLException {
+    public static synchronized void initialized() throws SQLException {
 
         if (INSTANCE == null) {
             INSTANCE = new SQLController();
         }
 
-        return INSTANCE;
     }
 
-    public void addChangeListener(PropertyChangeListener listener) {
-        this.pcs.addPropertyChangeListener(listener);
+    public static synchronized SQLController getController() {
+
+        if (INSTANCE != null) {
+            return INSTANCE;
+        } else {
+            throw new IllegalStateException("the controller has not been initialized");
+        }
+
     }
 
-    public void removeChangeListener(PropertyChangeListener listener) {
-        this.pcs.removePropertyChangeListener(listener);
+    public void addGatewayListener(AbstractSqlGateway gateway) {
+        this.gateways.add(gateway);
     }
 
-    public void executeQuery(Object callingObject, String query) {
+    public void removeGatewayListener(AbstractSqlGateway gateway) {
+        this.gateways.remove(gateway);
+    }
 
-        if (callingObject == null) {
+    public void executeQuery(AbstractSqlGateway callingGateway, String query) {
+
+        if (callingGateway == null) {
             throw new IllegalArgumentException("calling object cannot be null");
         }
 
@@ -118,38 +110,45 @@ public class SQLController {
                 ResultSet resultSet = statement.executeQuery(query);
                 if (resultSet == null) {
                     // null values indicate erroneous query
-                    PropertyChangeEvent pce = new PropertyChangeEvent(callingObject, QUERY_COMPLETE, null, null);
+                    SQLData data = new CollectionBasedSQLData(SQLData.Status.ERROR);
+                    callingGateway.queryResultReturn(data);
+                    return;
                 }
-                int resultColumns = resultSet.getMetaData().getColumnCount();
-                List<double[]> vals = new ArrayList<>();
+
+                CollectionBasedSQLData data = new CollectionBasedSQLData(SQLData.Status.SUCCESS);
+
+                int resultColumns = 2; // at a minimum
+                ResultSetMetaData metaData = resultSet.getMetaData();
+                if (metaData != null) {
+                    resultColumns = metaData.getColumnCount();
+                    String[] names = new String[resultColumns];
+                    for (int i = 0; i < resultColumns; i++) {
+                        names[i] = metaData.getColumnName(i + 1);
+                    }
+                    data.setColumnNames(names);
+                }
+
                 while(resultSet.next()) {
                     double[] rowVals = new double[resultColumns];
                     for (int i = 0; i<resultColumns; i++) {
                         rowVals[i] = resultSet.getDouble(i + 1);
                     }
-                    vals.add(rowVals);
+                    data.addRow(rowVals);
                 }
-                PlotData plotData = new PlotData();
-                plotData.data = vals;
-                // This method caches the results and for a particularly long dataset I would rather eat up cycles on
-                // the SQL thread rather than the Swing EDT
-                plotData.getZRange();
 
-                PropertyChangeEvent pce = new PropertyChangeEvent(callingObject, QUERY_COMPLETE, null, plotData);
-                this.pcs.firePropertyChange(pce);
+                callingGateway.queryResultReturn(data);
 
             } catch (SQLException e) {
                 e.printStackTrace();
-                // null values indicate erroneous query
-                PropertyChangeEvent pce = new PropertyChangeEvent(callingObject, QUERY_COMPLETE, null, null);
-                this.pcs.firePropertyChange(pce);
+                SQLData data = new CollectionBasedSQLData(SQLData.Status.ERROR);
+                callingGateway.queryResultReturn(data);
             }
 
         });
 
     }
 
-    public void addData(SQLData data, String table) {
+    public void addData(DataSource data, String tableName) {
 
         if (data == null) {
             throw new IllegalArgumentException("sql data cannot be null");
@@ -157,31 +156,31 @@ public class SQLController {
 
         this.sqlService.submit(() -> {
 
-            if (table != null) {
-                if (this.tables.contains(table)) {
+            if (tableName != null) {
+                if (this.tables.contains(tableName)) {
                     // Check if the specified table matches the number of columns
-                    Set<String> columns = this.fields.get(table);
+                    Set<String> columns = this.fields.get(tableName);
                     if (columns != null) {
-                        if (columns.containsAll(data.getHeaders())) {
-                            addRowData(data, table);
+                        if (columns.containsAll(data.getColumnNames())) {
+                            addRowData(data, tableName);
                         }
                     } else {
                         // TODO - add resolution between disagreeing column tracking, this shouldn't happen and indicates an error
                     }
                 } else {
-                    addTable(data, table);
-                    addRowData(data, table);
+                    addTable(data, tableName);
+                    addRowData(data, tableName);
                 }
             } else {
                 addTable(data, String.format(DEFAULT_TABLE_TAG, TABLE_COUNT.getAndIncrement()));
-                addRowData(data, table);
+                addRowData(data, tableName);
             }
 
         });
 
     }
 
-    private void addTable(SQLData data, String table) {
+    private void addTable(DataSource data, String table) {
 
         assert data != null;
         assert table != null;
@@ -189,8 +188,8 @@ public class SQLController {
         StringBuilder sb = new StringBuilder();
         LinkedHashSet<String> headers = new LinkedHashSet<>();
         sb.append("create table ").append(table).append(" ( ");
-        for (String header : data.getHeaders()) {
-            sb.append(header).append(" REAL, ");
+        for (String header : data.getColumnNames()) {
+            sb.append(header).append(" , ");
             headers.add(header);
         }
         int length = sb.length();
@@ -209,16 +208,11 @@ public class SQLController {
             e.printStackTrace();
         }
 
-        // Prepare a distributable set for consumption by SQLPlot classes
-        // TODO - check if this should be done on a separate thread
-        Set<String> tables = new TreeSet<>();
-        tables.addAll(this.tables);
-        PropertyChangeEvent pce = new PropertyChangeEvent(this, TABLE_ADDED, null, tables);
-        this.pcs.firePropertyChange(pce);
+        this.fireDatasetChange();
 
     }
 
-    private void addRowData(SQLData data, String table) {
+    private void addRowData(DataSource data, String table) {
 
         assert data != null;
         assert table != null;
@@ -228,7 +222,7 @@ public class SQLController {
         StringBuilder sbPost = new StringBuilder();
         sbPost.append(" values ( ");
         boolean first = true;
-        for (String columnName : data.getHeaders()) {
+        for (String columnName : data.getColumnNames()) {
             if (first) {
                 first = false;
             } else {
@@ -246,17 +240,11 @@ public class SQLController {
 
             PreparedStatement preparedStatement = this.connection.prepareStatement(statement);
 
-            double value;
-            for(SQLRow row : data.data) {
-                int columnIndex = 1;
-                for (String col : row.columns) {
-                    try {
-                        value = Double.parseDouble(col);
-                    } catch (NumberFormatException e) {
-                        e.printStackTrace();
-                        value = 0.0;
-                    }
-                    preparedStatement.setDouble(columnIndex++, value);
+            int rows = data.getRowCount();
+            int cols = data.getColumnCount();
+            for(int i = 0; i < rows; i++) {
+                for (int j = 0 ; j < cols; j++) {
+                    preparedStatement.setString(cols + 1, data.getValueAt(i, j));
                 }
                 preparedStatement.addBatch();
             }
@@ -269,8 +257,26 @@ public class SQLController {
             e.printStackTrace();
         }
 
-        PropertyChangeEvent pce = new PropertyChangeEvent(this, DATA_ADDED, null, null);
-        this.pcs.firePropertyChange(pce);
+    }
+
+    private void fireDatasetChange() {
+        // Create a copy of the current table to field mapping and broadcast out
+        Map<String, Set<String>> tablesAndFields = new HashMap<>();
+
+        for (String table : this.tables) {
+            Set<String> fields = this.fields.get(table);
+            if (fields != null) {
+                Set<String> copySet = new TreeSet<>();
+                copySet.addAll(fields);
+                tablesAndFields.put(table, Collections.unmodifiableSet(copySet));
+            }
+        }
+
+        Map<String, Set<String>> distributableMap = Collections.unmodifiableMap(tablesAndFields);
+
+        for (AbstractSqlGateway gateway : gateways) {
+            gateway.dataTableChange(distributableMap);
+        }
 
     }
 

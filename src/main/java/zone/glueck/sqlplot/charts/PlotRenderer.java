@@ -1,4 +1,4 @@
-package zone.glueck.sqlplot;
+package zone.glueck.sqlplot.charts;
 
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.entity.EntityCollection;
@@ -19,12 +19,14 @@ import java.awt.geom.Rectangle2D;
  */
 public class PlotRenderer extends AbstractXYItemRenderer {
 
-        private final Shape defaultShape = ShapeUtilities.createDiamond(3f);
+    private final Shape defaultShape = ShapeUtilities.createDiamond(3f);
 
-        private final PlotData plotData;
+    private final DataTranslator data;
 
-    public PlotRenderer(PlotData plotData) {
-        this.plotData = plotData;
+    private double[] zRange = null;
+
+    public PlotRenderer(DataTranslator data) {
+        this.data = data;
     }
 
     @Override
@@ -53,13 +55,16 @@ public class PlotRenderer extends AbstractXYItemRenderer {
                         transY);
             }
 
-            Color pointColor;
-            double[] zRange = plotData.getZRange();
-
             if (zRange == null) {
+                this.determineZRange();
+            }
+
+            Color pointColor;
+
+            if (zRange[0] == zRange[1]) {
                 pointColor = Color.BLUE;
             } else {
-                pointColor = PlotSettings.INSTANCE.getColor(zRange[0], zRange[1], plotData.getZValue(0, i1));
+                pointColor = PlotSettings.INSTANCE.getColor(zRange[0], zRange[1], this.data.getZValue(0, i1));
             }
 
             gd.setPaint(pointColor);
@@ -71,6 +76,19 @@ public class PlotRenderer extends AbstractXYItemRenderer {
             if (entities != null) {
                 addEntity(entities, hotspot, xyd, i, i1, transX, transY);
             }
+        }
+
+        private void determineZRange() {
+            int rowCount = this.data.getItemCount(0);
+            double min = Double.MAX_VALUE;
+            double max = -Double.MAX_VALUE;
+            double val;
+            for (int i = 0; i < rowCount; i++) {
+                val = this.data.getZValue(0, i);
+                min = Math.min(min, val);
+                max = Math.max(max, val);
+            }
+            this.zRange = new double[]{min, max};
         }
 
     }
