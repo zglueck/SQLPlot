@@ -85,7 +85,7 @@ public class ChartPanel extends AbstractSqlGateway {
             }
 
             if (data.getStatus() == SQLData.Status.SUCCESS && data.getColumnCount() > 1) {
-                DataTranslator dataset = new DataTranslator(data);
+                final DataTranslator dataset = new DataTranslator(data);
                 List<String> columnNames = data.getColumnNames();
                 final XYPlot plot = new XYPlot(
                         dataset,
@@ -94,6 +94,7 @@ public class ChartPanel extends AbstractSqlGateway {
                         new PlotRenderer(dataset));
                 SwingUtilities.invokeLater(() -> {
                     this.chartPanel.setChart(new JFreeChart("data", new Font("Sans Serif", 0, 14), plot, false));
+                    this.chartPanel.updateUI();
                 });
             }
 

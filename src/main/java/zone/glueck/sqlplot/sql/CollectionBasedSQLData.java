@@ -15,8 +15,6 @@ public class CollectionBasedSQLData implements SQLData {
 
     protected final List<String> columnNames = new ArrayList<>();
 
-    protected int rows = -1;
-
     protected int columns = -1;
 
     protected final SQLData.Status status;
@@ -112,12 +110,12 @@ public class CollectionBasedSQLData implements SQLData {
 
     @Override
     public int getRowCount() {
-        return this.rows;
+        return this.dataArray.size();
     }
 
     @Override
     public double getValueAt(int row, int column) {
-        if (row < this.rows && column < this.columns && row > -1 && column > -1) {
+        if (row < this.dataArray.size() && column < this.columns && row > -1 && column > -1) {
             return this.dataArray.get(row)[column];
         } else {
             throw new IllegalArgumentException("the row and column provided do not correspond to the data table");
