@@ -35,7 +35,7 @@ public enum PlotSettings {
             }
         }
 
-        double percent = value / (max - min);
+        double percent = (value - min) / (max - min);
         int rowToUse = (int) (colorArray.length * 0.5);
         int colToUse = Math.min(colorArray[rowToUse].length - 1, (int) (colorArray[rowToUse].length * percent));
 
