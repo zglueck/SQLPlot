@@ -69,7 +69,7 @@ public class PlotRenderer extends AbstractXYItemRenderer {
 
             gd.setPaint(pointColor);
             gd.fill(myshape);
-            gd.setPaint(Color.black);
+            gd.setPaint(pointColor);
             gd.setStroke(this.getItemOutlineStroke(i, i1));
             gd.draw(myshape);
 
