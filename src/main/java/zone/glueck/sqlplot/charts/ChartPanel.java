@@ -209,8 +209,8 @@ public class ChartPanel extends AbstractSqlGateway {
         this.tablesList.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
-                int itemIndex = e.getFirstIndex();
 
+                int itemIndex = tablesList.getSelectedIndex();
                 if (itemIndex < 0) {
                     return;
                 }
