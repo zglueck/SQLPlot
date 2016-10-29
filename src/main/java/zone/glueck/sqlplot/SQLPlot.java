@@ -74,6 +74,7 @@ public class SQLPlot {
                     @Override
                     protected void process(List<Void> chunks) {
                         progressBar.setString("Loading into database...");
+                        progressBar.setValue(50);
                     }
 
                     @Override
