@@ -205,6 +205,24 @@ public class ChartPanel extends AbstractSqlGateway {
             }
         });
 
+        this.commandsList.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+
+                int itemIndex = commandsList.getSelectedIndex();
+                if (itemIndex < 0) {
+                    return;
+                }
+
+                DefaultListModel<Query> model = (DefaultListModel) commandsList.getModel();
+                Query query = model.elementAt(itemIndex);
+                if (query != null) {
+                    commandTextArea.setText(query.query);
+                }
+
+            }
+        });
+
     }
 
     private void updateModels(Map<String, Set<String>> tablesAndFields) {
