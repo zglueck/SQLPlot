@@ -37,28 +37,6 @@ public class ChartPanel extends AbstractSqlGateway {
     private final JButton executeButton = new JButton("Execute Command");
     private final DefaultListModel<Query> commandsListModel = new DefaultListModel<>();
 
-    // For testing purposes only
-    public static void main(String[] args) {
-
-        try {
-            SQLController.initialized();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-
-
-        SwingUtilities.invokeLater(() -> {
-            ChartPanel chartPanel = new ChartPanel(SQLController.getController());
-            JFrame frame = new JFrame("Chart Panel Test");
-            frame.add(chartPanel.panel, BorderLayout.CENTER);
-            frame.pack();
-            frame.setVisible(true);
-            frame.setLocationRelativeTo(null);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        });
-    }
-
     public ChartPanel(SQLController sqlController) {
         super(sqlController);
 
@@ -270,7 +248,7 @@ public class ChartPanel extends AbstractSqlGateway {
 
         @Override
         public String toString() {
-            return query.substring(0, Math.min(50, query.length()));
+            return query;
         }
     }
 
